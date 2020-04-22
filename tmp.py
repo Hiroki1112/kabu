@@ -11,8 +11,8 @@ import requests
 import os
 from random import randint
 
-userID = 'gmx11cxy'
-password = 'tZ5vhqVRR'
+userID = ''
+password = ''
 
 downloaded_fileName = './downloaded.txt'
 
