@@ -1,16 +1,10 @@
-import webbrowser
-import tkinter
 from tkinter import messagebox
 from selenium import webdriver
-import time
+import time,base64,requests,os,threading,tkinter
 import urllib.request
 import pandas as pd
-import base64
 from tqdm import tqdm
-import requests
-import os
 from random import randint
-import threading
 
 userID = ''
 password = ''
@@ -73,7 +67,7 @@ class Test:
 class DLscript(GuiComponents):
     def __init__(self):
         super().__init__()
-        self.driver = webdriver.Chrome(executable_path='D:\\install\\driver\\chromedriver.exe')
+        
         #ダウンロード済ファイルを記したファイルを読み込む
         with open(stockPriceDownloaded) as f:
             self.SPhistorical = f.readlines()
@@ -84,11 +78,17 @@ class DLscript(GuiComponents):
         with open(sinyoDownloaded) as f:
             self.sinyoHistrical = f.readlines()
 
-    def DataDL(self,URL, prefix,histrical, DownloadedFileName, dir):
+    def DataDL(self,URL, prefix,histrical, DownloadedFileName, dir, lock):
+        
+        print(dir)
+        self.driver = webdriver.Chrome(executable_path='D:\\install\\driver\\chromedriver.exe')
         self.driver.get(URL)
+        # ②ロック実行
+        lock.acquire()
         elems = self.driver.find_elements_by_tag_name('a')
         #リンク先のcsvファイル名取得
 
+        
         add = ""
         for elem in elems:
             if prefix in elem.text:
@@ -110,8 +110,11 @@ class DLscript(GuiComponents):
             
         self.addFileTail(add,DownloadedFileName)
         self.update()
+        # ③アンロック
+        lock.release()
         print('過去ファイルのダウンロード完了。')
     
+    #ダウンロード済データの更新
     def update(self):
         with open(stockPriceDownloaded) as f:
             self.SPhistorical = f.readlines()
@@ -139,26 +142,36 @@ class DLscript(GuiComponents):
         urllib.request.urlretrieve(url, filename)
     
     def addFileTail(self, add,filename):
+        #ファイルにダウンロード済ファイルを書き込む
         with open(filename, mode='a') as f:
             f.write(add)
     
     def AllDataDL(self):
-        self.DataDL(stockPriceURL,stockPricePrefix,self.SPhistorical,stockPriceDownloaded ,'./info/stockprice/')
-        self.DataDL(sihyoURL, sihyoPrefix, self.sihyoHistrical, sihyoDownloaded, './info/sihyo/')
-        self.DataDL(fundURL, fundPrefix, self.fundHistrical, fundDownloaded, './info/fund/')
-        self.DataDL(sinyoURL, sinyoPrefix, self.sinyoHistrical, sinyoDownloaded, './info/sinyo/')
+        #ロックの作成
+        lock = threading.Lock()
+
+        thread1 = threading.Thread(target=self.DataDL, args=(stockPriceURL,stockPricePrefix,self.SPhistorical,stockPriceDownloaded ,'./info/stockprice/',lock))
+        thread2 = threading.Thread(target=self.DataDL, args=(sihyoURL, sihyoPrefix, self.sihyoHistrical, sihyoDownloaded, './info/sihyo/',lock))
+        thread3 = threading.Thread(target=self.DataDL, args=(fundURL, fundPrefix, self.fundHistrical, fundDownloaded, './info/fund/',lock))
+        thread4 = threading.Thread(target=self.DataDL, args=(sinyoURL, sinyoPrefix, self.sinyoHistrical, sinyoDownloaded, './info/sinyo/',lock))
+
+        #スレッドをスタートさせる
+        thread1.start()
+        thread2.start()
+        thread3.start()
+        thread4.start()
 
     def latestDay(self):
         with open(stockPriceDownloaded) as f:
             return f.readlines()[-1]
+    
 
 def main():
     scripts = DLscript()
-    test = Test()   
+    test = Test()
     scripts.addButtons(scripts.AllDataDL,20, 70,"データ一括ダウンロード")
     scripts.addLabel(200, 70, "最新データ:{}".format(scripts.latestDay()))
     scripts.addButtons(test.func3,20, 170,"今日のレポート")
-
     scripts.start()
 
 if __name__ == '__main__':
