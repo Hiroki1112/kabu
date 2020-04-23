@@ -10,7 +10,6 @@ from tqdm import tqdm
 import requests
 import os
 from random import randint
-import threading
 
 userID = ''
 password = ''
@@ -37,7 +36,7 @@ class GuiComponents:
         #ウインドウの作成
         self.root = tkinter.Tk()
         self.root.title("Kabu tool")
-        self.root.geometry("1000x720")
+        self.root.geometry("360x520")
     
     def addButtons(self, func, x, y, title):
         #ボタンの作成
@@ -70,9 +69,8 @@ class Test:
     def func3(self):
         print('func3')
 
-class DLscript(GuiComponents):
+class DLscript:
     def __init__(self):
-        super().__init__()
         self.driver = webdriver.Chrome(executable_path='D:\\install\\driver\\chromedriver.exe')
         #ダウンロード済ファイルを記したファイルを読み込む
         with open(stockPriceDownloaded) as f:
@@ -93,34 +91,12 @@ class DLscript(GuiComponents):
         for elem in elems:
             if prefix in elem.text:
                 if elem.text+'\n' not in histrical:
-                    # Basic認証用の文字列を作成.
-                    basic_user_and_pasword = base64.b64encode('{}:{}'.format(userID, password).encode('utf-8'))
-                    
-                    print('◇◆'*30)
-                    print(elem.text + 'をダウンロードします。')
-
-                    url = URL + elem.text
-                    # Basic認証付きの、GETリクエストを作成する.
-                    self.setup_basic_auth(url, userID, password)
-                    
-                    self.download_file(url,dir)
-                    print(elem.text + 'のダウンロード完了')
+                    print('hoge')
                     add = add + elem.text + "\n"
-                    time.sleep(randint(5,30))
-            
+        
+        
         self.addFileTail(add,DownloadedFileName)
-        self.update()
         print('過去ファイルのダウンロード完了。')
-    
-    def update(self):
-        with open(stockPriceDownloaded) as f:
-            self.SPhistorical = f.readlines()
-        with open(sihyoDownloaded) as f:
-            self.sihyoHistrical = f.readlines()
-        with open(fundDownloaded) as f:
-            self.fundHistrical = f.readlines()
-        with open(sinyoDownloaded) as f:
-            self.sinyoHistrical = f.readlines()
 
     def setup_basic_auth(self,base_uri, user, password):
         password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
@@ -138,28 +114,36 @@ class DLscript(GuiComponents):
         print('Downloading ... {0} as {1}'.format(url, filename))
         urllib.request.urlretrieve(url, filename)
     
-    def addFileTail(self, add,filename):
+    def addFileTail(self,add,filename):
         with open(filename, mode='a') as f:
             f.write(add)
     
-    def AllDataDL(self):
+    def histricalDataDL(self):
         self.DataDL(stockPriceURL,stockPricePrefix,self.SPhistorical,stockPriceDownloaded ,'./info/stockprice/')
-        self.DataDL(sihyoURL, sihyoPrefix, self.sihyoHistrical, sihyoDownloaded, './info/sihyo/')
-        self.DataDL(fundURL, fundPrefix, self.fundHistrical, fundDownloaded, './info/fund/')
-        self.DataDL(sinyoURL, sinyoPrefix, self.sinyoHistrical, sinyoDownloaded, './info/sinyo/')
+        #self.DataDL(sihyoURL, sihyoPrefix, self.sihyoHistrical, sihyoDownloaded, './info/sihyo/')
+        #self.DataDL(fundURL, fundPrefix, self.fundHistrical, fundDownloaded, './info/fund/')
+        #self.DataDL(sinyoURL, sinyoPrefix, self.sinyoHistrical, sinyoDownloaded, './info/sinyo/')
 
-    def latestDay(self):
-        with open(stockPriceDownloaded) as f:
-            return f.readlines()[-1]
+class Analyze:
+    def todaysReport(self,latestFilename):
+        #load as dataframe
+        df = pd.read_csv(latestFilename)
 
-def main():
-    scripts = DLscript()
-    test = Test()   
-    scripts.addButtons(scripts.AllDataDL,20, 70,"データ一括ダウンロード")
-    scripts.addLabel(200, 70, "最新データ:{}".format(scripts.latestDay()))
-    scripts.addButtons(test.func3,20, 170,"今日のレポート")
+        #市場別売買代金
+        
+        #
 
-    scripts.start()
+
+
+
 
 if __name__ == '__main__':
-    main()
+    DLfuc = DLscript()
+    test = Test()    
+    gui = GuiComponents()
+    gui.addButtons(DLfuc.histricalDataDL,20, 70,"過去データダウンロード")
+    gui.addLabel(20, 300, "最新データ:")
+    gui.addButtons(test.func2,20, 120,"当日データ更新")
+    gui.addLabel(20, 300, "最新データ:")
+    gui.addButtons(test.func3,20, 170,"ほげ")
+    gui.start()

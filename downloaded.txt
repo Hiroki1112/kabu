@@ -1,1 +1,0 @@
-japan-all-stock-prices-2_20200417.csv,japan-all-stock-prices-2_20200420.csv,japan-all-stock-prices-2_20200421.csv
