@@ -6,8 +6,8 @@ import pandas as pd
 from tqdm import tqdm
 from random import randint
 
-userID = ''
-password = ''
+userID = 'gmx11cxy'
+password = 'tZ5vhqVRR'
 
 stockPriceDownloaded = './tmp/stockprice.csv'
 sihyoDownloaded = './tmp/sihyo.csv'
@@ -24,6 +24,11 @@ sihyoPrefix = 'japan-all-stock-data_'
 fundPrefix = 'japan-all-stock-financial-results_'
 sinyoPrefix = 'japan-all-stock-margin-transactions_'
 
+kabutanIncrease = 'https://kabutan.jp/warning/?mode=2_1'
+kabutanIncreaseSaveFile = './info/kabutan/increase.csv'
+kabutanDecrease = 'https://kabutan.jp/warning/?mode=2_2'
+kabutanDecreaseSaveFile = './info/kabutan/decrease.csv'
+
 #elem = driver.find_element_by_class_name("ui-link")
 
 class GuiComponents:
@@ -32,6 +37,7 @@ class GuiComponents:
         self.root = tkinter.Tk()
         self.root.title("Kabu tool")
         self.root.geometry("1000x720")
+        self.root.attributes("-topmost", True)
     
     def addButtons(self, func, x, y, title):
         #ボタンの作成
@@ -80,15 +86,15 @@ class DLscript(GuiComponents):
 
     def DataDL(self,URL, prefix,histrical, DownloadedFileName, dir, lock):
         
-        print(dir)
-        self.driver = webdriver.Chrome(executable_path='D:\\install\\driver\\chromedriver.exe')
-        self.driver.get(URL)
+        #スレッドごとにタブを開く
+        driver = webdriver.Chrome(executable_path='D:\\install\\driver\\chromedriver.exe')
+        driver.get(URL)
+
         # ②ロック実行
         lock.acquire()
-        elems = self.driver.find_elements_by_tag_name('a')
+        elems = driver.find_elements_by_tag_name('a')
         #リンク先のcsvファイル名取得
 
-        
         add = ""
         for elem in elems:
             if prefix in elem.text:
@@ -110,9 +116,13 @@ class DLscript(GuiComponents):
             
         self.addFileTail(add,DownloadedFileName)
         self.update()
+
+        #タブを閉じる
+        driver.close()
+
         # ③アンロック
         lock.release()
-        print('過去ファイルのダウンロード完了。')
+        print('{}のダウンロード完了。'.format(prefix))
     
     #ダウンロード済データの更新
     def update(self):
@@ -125,6 +135,7 @@ class DLscript(GuiComponents):
         with open(sinyoDownloaded) as f:
             self.sinyoHistrical = f.readlines()
 
+    #basic認証の設定
     def setup_basic_auth(self,base_uri, user, password):
         password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         password_mgr.add_password(
@@ -136,16 +147,19 @@ class DLscript(GuiComponents):
         opener = urllib.request.build_opener(auth_handler)
         urllib.request.install_opener(opener)
 
+    #ファイルをDlする
     def download_file(self,url, dir):
         filename = dir + os.path.basename(url)
-        print('Downloading ... {0} as {1}'.format(url, filename))
+        print('Downloading ... \n{0} as {1}'.format(url, filename))
         urllib.request.urlretrieve(url, filename)
     
+    #ファイルにDLしたファイル名を追記する関数
     def addFileTail(self, add,filename):
         #ファイルにダウンロード済ファイルを書き込む
         with open(filename, mode='a') as f:
             f.write(add)
     
+    #DLを実行する。スレッドに分割する
     def AllDataDL(self):
         #ロックの作成
         lock = threading.Lock()
@@ -160,18 +174,87 @@ class DLscript(GuiComponents):
         thread2.start()
         thread3.start()
         thread4.start()
+        
 
     def latestDay(self):
         with open(stockPriceDownloaded) as f:
             return f.readlines()[-1]
+
+    def kabutanInfo(self,URL):
+        #最新ファイルの確認
+
+        driver = webdriver.Chrome(executable_path='D:\\install\\driver\\chromedriver.exe')
+        driver.get(URL)
+
+        # ②ロック実行
+        #trごとに情報がまとめられているので、tr要素を取得
+        elems = driver.find_elements_by_tag_name('tr')
+
+        tmpList = []
+        for elem in elems:
+            stockList = elem.text.split(' ')
+            if(stockList[0] == 'コード\n銘柄名'):
+                pass
+            elif(len(stockList) > 8):
+                #銘柄名と終値を分離
+                tmp = stockList[2].split('\n')
+                stockList.append(tmp[0])
+                stockList.append(tmp[1])
+                tmpList.append(stockList)
+
+        if URL == kabutanIncrease:
+            #上昇銘柄
+            pass
+        elif URL == kabutanDecrease:
+            #値下がり銘柄
+            pass
+
+        #タブを閉じる
+        driver.close()
     
+    def kabutanDL(self):
+        #105件のデータをとる
+        #上昇率100位までのデータをとる
+        #上昇銘柄が100県以下の時にエラーが出るので、エラー処理必須
+        for i in range(1,8):
+            try:
+                #ページをさかのぼる。エラーが出た時点でfor分を抜ける
+                print(i)
+                self.kabutanInfo(kabutanIncrease + '&page=' + str(i))
+            except:
+                break
+
+        self.popupMessage("Messege","株探からのデータのダウンロードが完了しました。")
+
+
+class Analyze:
+    
+    #当日データのみのレポートを作成
+    def todaysReport(self,latestFile,previousReport):
+        #データフレーム形式で読みこむ
+        df = pd.read_csv(latestFile)
+
+        #市場別売買代金
+
+        #市場別値上がり率
+
+        #業種別売買代金
+
+        #
+
+        #
+        #
+        #
+        #
+
 
 def main():
     scripts = DLscript()
     test = Test()
     scripts.addButtons(scripts.AllDataDL,20, 70,"データ一括ダウンロード")
     scripts.addLabel(200, 70, "最新データ:{}".format(scripts.latestDay()))
-    scripts.addButtons(test.func3,20, 170,"今日のレポート")
+    kabutanThread = threading.Thread(target=scripts.kabutanDL)
+    scripts.addButtons(kabutanThread.start,20, 170,"株探からデータをDL")
     scripts.start()
 
 if __name__ == '__main__':
