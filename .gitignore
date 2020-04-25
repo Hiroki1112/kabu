@@ -1,4 +1,4 @@
 #infoファイル下は不必要
 info/
 tmp/
-./tmp.py
+tmp.py
